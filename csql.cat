@@ -1,0 +1,23 @@
+# csql.cat —— CatBase 访问 MySQL 的复用模块（演示版：经 mysql 客户端执行 SQL）
+#
+# 用法（重要）：CatBase 当前要求 FFI（import "libc"）必须写在【入口文件】里，
+# 模块里的 FFI 不会被链接。所以在你的入口 .cat 里 import 本模块时，请务必同时写：
+#     import "/usr/lib/x86_64-linux-gnu/libc.so" as libc
+#     from libc import system(cmd: bytes) -> int
+#
+# 更“纯”的做法（不走 mysql 客户端，用原生 tcpsocket 实现 MySQL 线协议，
+# 含握手 / mysql_native_password 鉴权 / COM_QUERY / 结果集解析）见 README “进阶路线”。
+#
+# 安全提示：把密码写进命令行有泄露风险，仅用于本地开发/演示；生产请走配置或密钥。
+
+import "/usr/lib/x86_64-linux-gnu/libc.so" as libc
+from libc import system(cmd: bytes) -> int
+
+def db_query(host: str, user: str, password: str, database: str, sql: str) -> str {
+    f: File = file("/tmp/csql_sql.txt", "w")
+    f.write(sql)
+    cmd: str = "mysql -h " + host + " -u " + user + " -p" + password + " -D " + database + " -B -N < /tmp/csql_sql.txt > /tmp/csql_out.txt 2>&1"
+    libc.system(bytes(cmd))
+    out: str = file("/tmp/csql_out.txt").read()
+    return out
+}

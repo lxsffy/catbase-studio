@@ -1,0 +1,17 @@
+# pages/clock.cat —— 带时间的“纯 CatBase 动态网页”
+# 用 builtin localtime()/strftime() 取服务器本地时间，每秒自动刷新。
+# 访问：GET /page/clock
+def main(args: list[str]) {
+    s: str = strftime("%Y-%m-%d %H:%M:%S")
+    t: TimeStruct = localtime()
+    print("<!doctype html><html><head><meta charset=utf-8>")
+    print("<meta http-equiv=refresh content=1>")
+    print("<title>CatBase Clock</title></head>")
+    print("<body style='font-family:sans-serif;text-align:center;margin-top:60px'>")
+    print("<h1>Pure CatBase Clock</h1>")
+    print("<p style='font-size:2.4em;color:#4f7cff'>", s, "</p>")
+    print("<p>year=", t.year, " month=", t.month, " day=", t.day,
+          " hour=", t.hour, " min=", t.minute, " sec=", t.second, "</p>")
+    print("<p><a href='/'>← 回到 IDE</a></p>")
+    print("</body></html>")
+}

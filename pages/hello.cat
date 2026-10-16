@@ -1,0 +1,12 @@
+# pages/hello.cat —— 一个“纯 CatBase 动态网页”
+# 这个 .cat 本身就用 print 输出 HTML；catserve 把它的 stdout 当作 HTTP 响应体返回。
+# 访问：GET /page/hello
+def main(args: list[str]) {
+    print("<!doctype html><html><head><meta charset=utf-8><title>Hello</title></head>")
+    print("<body style='font-family:sans-serif;max-width:640px;margin:40px auto'>")
+    print("<h1>Hello from a <span style=color:#4f7cff>pure CatBase</span> dynamic page</h1>")
+    print("<p>这个页面由 <b>hello.cat</b> 在 catserve 里运行生成，没有任何模板引擎或后端框架。</p>")
+    print("<p>2 + 3 * 4 = ", 2 + 3 * 4, "</p>")
+    print("<p><a href='/'>← 回到 IDE</a></p>")
+    print("</body></html>")
+}

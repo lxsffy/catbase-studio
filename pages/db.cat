@@ -1,0 +1,31 @@
+# pages/db.cat —— 数据库驱动的“纯 CatBase 动态网页”示例
+# 需要：目标机器装有 mysql 客户端，且能连到 MySQL 实例。
+# 访问：GET /page/db
+#
+# 重要：CatBase 当前【模块不能调用 FFI】——被 import 的文件里写 libc.system 会报
+# “undefined function”。所以涉及系统调用/数据库的代码必须写在【入口文件】里。
+# 这里把 FFI 与 db_query 都写在入口（pages/db.cat 本身就是入口），保证可编译可运行。
+import "/usr/lib/x86_64-linux-gnu/libc.so" as libc
+from libc import system(cmd: bytes) -> int
+
+def db_query(host: str, user: str, password: str, database: str, sql: str) -> str {
+    f: File = file("/tmp/csql_sql.txt", "w")
+    f.write(sql)
+    cmd: str = "mysql -h " + host + " -u " + user + " -p" + password + " -D " + database + " -B -N < /tmp/csql_sql.txt > /tmp/csql_out.txt 2>&1"
+    libc.system(bytes(cmd))
+    out: str = file("/tmp/csql_out.txt").read()
+    return out
+}
+
+def main(args: list[str]) {
+    # 注意：以下连接参数为占位符（user/password），请按实际 MySQL 配置修改
+    res: str = db_query("127.0.0.1", "user", "password", "test", "SELECT 1+1 AS a, 'catbase' AS b")
+    print("<!doctype html><html><head><meta charset=utf-8><title>DB</title></head>")
+    print("<body style='font-family:sans-serif'>")
+    print("<h1>CatBase 直连 MySQL 的结果</h1>")
+    print("<pre style='background:#0b0e1a;color:#bfe6c0;padding:12px;border-radius:8px'>", res, "</pre>")
+    print("<p>这就是一个由 CatBase 在 catserve 里运行、实时查询数据库后生成的动态网页。</p>")
+    print("<p>注意：当前为经 mysql 客户端执行；更“纯”的线协议版见 README 进阶路线。</p>")
+    print("<p><a href='/'>← 回到 IDE</a></p>")
+    print("</body></html>")
+}

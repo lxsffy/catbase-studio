@@ -1,0 +1,8 @@
+# macOS
+.DS_Store
+
+# 日志
+*.log
+
+# 运行时临时目录
+/tmp/

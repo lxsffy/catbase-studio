@@ -1,0 +1,12 @@
+# 字符串常用操作：替换 / 分割 / 遍历
+def main(args: list[str]) {
+    s: str = "catbase,is,cool"
+    print("原始: ", s, "\n")
+    print("替换逗号->空格: ", s.replace(",", " "), "\n")
+    parts: list[str] = s.split(",")
+    j: int = 0
+    while j < len(parts) {
+        print("part[", j, "] = ", parts[j], "\n")
+        j = j + 1
+    }
+}

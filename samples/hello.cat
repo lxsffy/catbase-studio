@@ -1,0 +1,5 @@
+# 问候 + 当前时间
+def main(args: list[str]) {
+    print("你好，CatBase！\n")
+    print("现在时间: ", strftime("%Y-%m-%d %H:%M:%S"), "\n")
+}

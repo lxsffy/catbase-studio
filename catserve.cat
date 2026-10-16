@@ -1,0 +1,212 @@
+# catserve.cat —— 纯 CatBase 动态网页服务器 + 浏览器内 CatBase IDE
+# 全部使用 CatBase 原生能力：tcpsocket 服务端 / file IO / FFI 调 libc.system 编译运行用户代码
+#
+# 路由：
+#   GET  /            -> 浏览器内 IDE（ide.html）
+#   POST /run         -> 接收页面提交的 .cat 源码，编译运行，返回 stdout
+#   GET  /page/<name> -> 运行 pages/<name>.cat（该 .cat 用 print 输出 HTML，即“动态网页”）
+#   GET  /api/samples -> 返回示例文件名 JSON 列表
+#   GET  /api/sample?name=X -> 返回 samples/X.cat 的源码（供 IDE 下拉载入）
+#
+# 部署：把本文件、ide.html、pages/、samples/ 放到同一目录，catbasecc run catserve.cat
+
+import "/usr/lib/x86_64-linux-gnu/libc.so" as libc
+from libc import system(cmd: bytes) -> int
+
+# ---- 可配置路径（部署时改成你的目录）----
+CATBASECC: str = "/work/bin/catbasecc"
+ROOT: str = "."
+PAGE_DIR: str = "./pages"
+
+# 示例目录（服务端示例目录：浏览器下拉载入）
+SAMPLE_DIR: str = "./samples"
+# 示例清单（手动登记：新增示例请把 .cat 放进 samples/ 并在此加名字，避免目录遍历）
+SAMPLES: str = "fib.cat,hello.cat,sum100.cat,clock.cat,str_demo.cat"
+
+def samples_json() -> str {
+    q: str = chr(34)
+    parts: list[str] = SAMPLES.split(",")
+    out: str = "["
+    i: int = 0
+    while i < len(parts) {
+        if i > 0 { out = out + "," }
+        out = out + q + parts[i] + q
+        i = i + 1
+    }
+    out = out + "]"
+    return out
+}
+
+def is_sample(name: str) -> int {
+    wrapped: str = "," + SAMPLES + ","
+    if wrapped.replace("," + name + ",", "") != wrapped { return 1 }
+    return 0
+}
+
+# ---------- HTTP 解析辅助 ----------
+# 约定：浏览器 POST 的代码体以终止符 "<<<END>>>" 结尾，服务端据此判定收全并剥离，
+# 从而无需解析 Content-Length / 使用 find 的可空类型。
+
+# ---------- 运行用户 / 页面代码 ----------
+
+def run_cat(src: str) -> str {
+    ms: str = str(time())
+    srcpath: str = "/tmp/run_" + ms + ".cat"
+    outpath: str = "/tmp/run_" + ms + ".out"
+    f: File = file(srcpath, "w")
+    f.write(src)
+    libc.system(bytes(CATBASECC + " run " + srcpath + " > " + outpath + " 2>&1"))
+    out: str = file(outpath).read()
+    return out
+}
+
+def run_page(name: str) -> str {
+    ms: str = str(time())
+    path: str = PAGE_DIR + "/" + name + ".cat"
+    outpath: str = "/tmp/page_" + ms + ".out"
+    libc.system(bytes(CATBASECC + " run " + path + " > " + outpath + " 2>&1"))
+    out: str = file(outpath).read()
+    return out
+}
+
+# ---------- 响应 ----------
+
+def send_response(c: TCPClient, ctype: str, body: str) {
+    head: str = "HTTP/1.1 200 OK\r\nContent-Type: " + ctype + "\r\nConnection: close\r\n\r\n"
+    c.write(head + body)
+}
+
+# ---------- 路由 ----------
+
+def route(c: TCPClient, method: str, path: str, body: str) {
+    if path == "/" {
+        html: str = file(ROOT + "/ide.html").read()
+        send_response(c, "text/html; charset=utf-8", html)
+        return
+    }
+    if method == "POST" {
+        if path == "/run" {
+            out: str = run_cat(body)
+            send_response(c, "text/plain; charset=utf-8", out)
+            return
+        }
+    }
+    # 服务端示例目录：列出示例 / 读取单个示例
+    if path == "/api/samples" {
+        send_response(c, "application/json; charset=utf-8", samples_json())
+        return
+    }
+        if path.replace("/api/sample?name=", "") != path {
+            name: str = path.replace("/api/sample?name=", "")
+            nm: list[str] = name.split("&")
+            n: str = ""
+            ni: int = 0
+            while ni < 1 {
+                n = nm[ni]
+                ni = ni + 1
+            }
+            if is_sample(n) == 1 {
+                content: str = file(SAMPLE_DIR + "/" + n).read()
+                send_response(c, "text/plain; charset=utf-8", content)
+                return
+            }
+            send_response(c, "text/plain; charset=utf-8", "404 sample not found")
+            return
+        }
+    # /page/<name>
+    page_name: str = path.replace("/page/", "")
+    if page_name != path {
+        qp: list[str] = page_name.split("?")
+        name: str = ""
+        qi: int = 0
+        while qi < 1 {
+            name = qp[qi]
+            qi = qi + 1
+        }
+        out: str = run_page(name)
+        send_response(c, "text/html; charset=utf-8", out)
+        return
+    }
+    send_response(c, "text/plain; charset=utf-8", "404 Not Found")
+}
+
+# ---------- 连接处理 ----------
+
+def handle(c: TCPClient) {
+    req: str = ""
+    tries: int = 0
+    while tries < 256 {
+        chunk: str = c.read(4096)
+        if len(chunk) == 0 {
+            break
+        }
+        req = req + chunk
+        bp: list[str] = req.split("\r\n\r\n")
+        if len(bp) >= 2 {
+            # headers = bp[0]
+            headers: str = ""
+            hi: int = 0
+            while hi < 1 {
+                headers = bp[hi]
+                hi = hi + 1
+            }
+            hlines: list[str] = headers.split("\r\n")
+            rl: str = ""
+            ri: int = 0
+            while ri < 1 {
+                rl = hlines[ri]
+                ri = ri + 1
+            }
+            toks: list[str] = rl.split(" ")
+            method: str = ""
+            path: str = ""
+            ti: int = 0
+            while ti < len(toks) {
+                if ti == 0 { method = toks[ti] }
+                if ti == 1 { path = toks[ti] }
+                ti = ti + 1
+            }
+            if method != "POST" {
+                # GET/HEAD：请求头收全即可
+                route(c, method, path, "")
+                return
+            }
+            # POST（代码提交）：等待终止符收全
+            done: str = req.replace("<<<END>>>", "")
+            if done != req {
+                body: str = ""
+                bi: int = 1
+                while bi < len(bp) {
+                    if bi > 1 { body = body + "\r\n\r\n" }
+                    body = body + bp[bi]
+                    bi = bi + 1
+                }
+                body = body.replace("<<<END>>>", "")
+                route(c, method, path, body)
+                return
+            }
+        }
+        tries = tries + 1
+    }
+    send_response(c, "text/plain; charset=utf-8", "400 incomplete request")
+}
+
+# ---------- 主循环 ----------
+
+def main(args: list[str]) {
+    print("CatBase Studio 启动中 -> http://0.0.0.0:8080\n")
+    server: TCPSocket = tcpsocket()
+    server.bind("0.0.0.0", 8080)
+    server.listen(128)
+    print("listening on :8080 ...\n")
+    while True {
+        client: TCPClient = server.accept()
+        try {
+            handle(client)
+        }
+        except e {
+            print("handler error: ", e, "\n")
+        }
+        client.close()
+    }
+}

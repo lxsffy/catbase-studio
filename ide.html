@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CatBase Studio —— 在浏览器里写/跑 CatBase</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: ui-sans-serif, system-ui, "PingFang SC", sans-serif;
+         background:#0f1220; color:#e6e8ef; }
+  header { padding:14px 20px; background:#171a2b; border-bottom:1px solid #2a2f4a; }
+  header h1 { margin:0; font-size:18px; }
+  header small { color:#9aa3c0; }
+  .bar { padding:10px 20px; display:flex; gap:10px; align-items:center; background:#131624; }
+  button { background:#4f7cff; color:#fff; border:0; padding:8px 16px; border-radius:8px;
+           font-size:14px; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+  a.link { color:#7fa0ff; text-decoration:none; font-size:14px; }
+  select { background:#2a2f4a; color:#e6e8ef; border:0; padding:8px 12px;
+           border-radius:8px; font-size:14px; cursor:pointer; }
+  main { display:grid; grid-template-columns:1fr 1fr; gap:0; height:calc(100vh - 116px); }
+  .pane { display:flex; flex-direction:column; min-width:0; }
+  .pane h2 { margin:0; padding:8px 14px; font-size:13px; color:#9aa3c0;
+             background:#0c0f1c; border-bottom:1px solid #2a2f4a; }
+  textarea { flex:1; width:100%; border:0; resize:none; padding:14px; background:#0b0e1a;
+             color:#d6e0ff; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+             font-size:13px; line-height:1.5; outline:none; }
+  #out { flex:1; overflow:auto; padding:14px; background:#0b0e1a; white-space:pre-wrap;
+         font-family: ui-monospace, Menlo, monospace; font-size:13px; color:#bfe6c0; }
+  .hint { color:#7e88ad; font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🐱 CatBase Studio</h1>
+  <small>纯 CatBase 写的动态网页服务器 · 在页面上写 CatBase 代码，点 Run 直接在服务端编译运行</small>
+</header>
+
+<div class="bar">
+  <button id="run">▶ Run（编译并运行）</button>
+  <select id="sample"><option value="">载入示例…</option></select>
+  <span class="hint">运行时长上限 5s，输出上限 64KB（演示用）</span>
+  <span style="flex:1"></span>
+  <a class="link" href="/page/hello" target="_blank">/page/hello ↗</a>
+  <a class="link" href="/page/clock" target="_blank">/page/clock ↗</a>
+</div>
+
+<main>
+  <div class="pane">
+    <h2>源码（CatBase）</h2>
+    <textarea id="code" spellcheck="false"># 在页面里写的 CatBase 代码，点 Run 直接在服务端编译运行
+def main(args: list[str]) {
+    s: int = 0
+    i: int = 1
+    while i <= 100 {
+        s = s + i
+        i = i + 1
+    }
+    print("1..100 求和 = ", s, "\n")
+    print("当前时间: ", strftime("%H:%M:%S"), "\n")
+    print("你好，CatBase！\n")
+}
+</textarea>
+  </div>
+  <div class="pane">
+    <h2>运行输出</h2>
+    <div id="out">（点 Run 后这里显示 stdout / stderr）</div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+$("run").onclick = async () => {
+  const btn = $("run"); btn.disabled = true; $("out").textContent = "运行中…";
+  try {
+    const r = await fetch("/run", { method:"POST", body: $("code").value + "\n<<<END>>>\n" });
+    $("out").textContent = await r.text();
+  } catch (e) {
+    $("out").textContent = "请求失败: " + e;
+  } finally { btn.disabled = false; }
+};
+async function loadSamples() {
+  try {
+    const r = await fetch("/api/samples");
+    const names = await r.json();
+    const sel = $("sample");
+    names.forEach(n => {
+      const o = document.createElement("option");
+      o.value = n; o.textContent = n.replace(/\.cat$/, "");
+      sel.appendChild(o);
+    });
+  } catch (e) { /* 示例列表拉取失败不影响写代码 */ }
+}
+$("sample").onchange = async (ev) => {
+  const name = ev.target.value;
+  if (!name) return;
+  try {
+    const r = await fetch("/api/sample?name=" + encodeURIComponent(name));
+    $("code").value = await r.text();
+  } catch (e) {
+    $("out").textContent = "载入示例失败: " + e;
+  }
+  ev.target.value = "";
+};
+loadSamples();
+</script>
+</body>
+</html>

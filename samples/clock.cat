@@ -1,0 +1,5 @@
+# 用本地时间打印时分秒
+def main(args: list[str]) {
+    print("当前时间: ", strftime("%H:%M:%S"), "\n")
+    print("日期: ", strftime("%Y-%m-%d"), "\n")
+}

@@ -1,0 +1,15 @@
+# 斐波那契前 15 项
+def main(args: list[str]) {
+    a: int = 0
+    b: int = 1
+    print("fib: ")
+    i: int = 0
+    while i < 15 {
+        print(a, " ")
+        t: int = a + b
+        a = b
+        b = t
+        i = i + 1
+    }
+    print("\n")
+}
