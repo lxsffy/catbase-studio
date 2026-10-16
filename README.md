@@ -17,6 +17,18 @@
 
 ## CatBase 是什么
 
+CatBase 的设计者叫钟声，珠海豆子机器人科技的创始人，2009 年出过一本《Java程序员，上班那点事儿》。
+
+他做 AI 应用研发时撞上一堵墙：用 Python 写起来爽，跑起来慢，还得装解释器；用 C 跑得快，指针和内存管理能把人折磨到脱发。
+
+于是 CatBase 把两者的优点缝在一起，专为 AI 应用研发而生，目标是在极小运行环境下替代 C。
+
+CatBase编程语言是为Ai应用研发而生，极小运行环境下可以替代C并支持python语法。
+
+CatBase 诞生于对“简单”与“高效”的双重追求。我们希望创造一门无需学习复杂 C 语言、无需忍受 Python 性能瓶颈、无需关心内存与指针的语言，同时保留 Python 的易用性，并拥有 C 级别的性能。
+
+它面向极小资源 Linux 环境与服务器环境，让开发者用最轻松的语法，写出最可靠、最高效的系统程序。
+
 CatBase 是一门类 Python 语法的静态类型编程语言，编译为原生二进制、无需解释器即可运行。它支持 TCP/UDP/HTTP 网络编程、多线程、JSON 处理，并能通过 FFI 调用 `.so` / `.a` C 库，也可将自身编译为共享库，适合快速原型、网络服务与 AI 应用开发。
 
 **获取 catbasecc 编译器**：从官网下载页 <http://catbase-lang.com/download.html> 或 GitHub Releases（<https://github.com/DoRobotAi/catbase-lang/releases>）获取对应平台的二进制包，解压后编译器位于 `bin/catbasecc`。使用方法：
@@ -79,15 +91,15 @@ catbase_studio/
 ```
 ┌──────────────┐     HTTP      ┌──────────────────────────────────────────┐
 │  浏览器       │ ───────────> │  catserve.cat  (CatBase, 原生 tcpsocket)   │
-│  ide.html     │              │   bind/listen/accept/read/write           │
+│  ide.html     │             │   bind/listen/accept/read/write           │
 │  - 写代码     │ <─────────── │   路由: /  /run  /page/<name>              │
-│  - Run        │    响应       │      │                                     │
+│  - Run        │    响应      │      │                                    │
 └──────────────┘              │      ├─ GET /        -> 返回 ide.html      │
                               │      ├─ POST /run    -> 落盘+catbasecc run  │
                               │      └─ /page/NAME  -> 运行 pages/NAME.cat  │
                               │              │ 该 .cat 用 print 输出 HTML    │
                               │              ▼                              │
-                              │   libc.system("mysql -h.. -u.. -e SQL")      │
+                              │   libc.system("mysql -h.. -u.. -e SQL")     │
                               │              │  (数据库动态页用)              │
                               └──────────────┴──────────────────────────────┘
 ```
